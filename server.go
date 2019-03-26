@@ -1,6 +1,7 @@
 package httpu
 
 import (
+	"context"
 	"net/http"
 	"syscall"
 
@@ -122,4 +123,12 @@ func (s *Server) InitListeners() (err error) {
 	s.listeners = listeners
 	s.tasks = tasks
 	return nil
+}
+
+func (s *Server) Shutdown(ctx context.Context) (err error) {
+	for _, l := range s.listeners[1:] {
+		go l.ShutdownLog(ctx)
+	}
+
+	return s.listeners[0].ShutdownLog(ctx)
 }
