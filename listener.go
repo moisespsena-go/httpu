@@ -53,7 +53,7 @@ func (l *Listener) Start(done func()) (stop task.Stoper, err error) {
 		}()
 		if err := l.Run(); err != nil {
 			if !l.stop {
-				l.Log.Error(err)
+				l.Log.Error(err.Error())
 			}
 		} else {
 			l.Log.Info("done")
