@@ -15,7 +15,7 @@ func main() {
 	srv := httpu.NewServer(&httpu.Config{
 		Servers: []httpu.ServerConfig{
 			{Addr: httpu.Addr(":9000")},
-			{Addr: httpu.Addr(":9002")},
+			{Addr: httpu.Addr(":9002"), Tls: httpu.TlsConfig{CertFile: "server.crt", KeyFile: "server.key"}},
 		},
 	}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		println("request start")
