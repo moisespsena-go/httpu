@@ -19,11 +19,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:1084fb40df5b61b53f6efe3f6080a63b511d345f78934a0a277ca1dc043cc328"
+  digest = "1:89cc543292f2af3d1e7939a5ef626dfd58f8aca5a424e8a0eab185045dee09b0"
   name = "github.com/moisespsena-go/task"
   packages = ["."]
   pruneopts = "UT"
-  revision = "40907444d35260b0ec04f1850edba9d5355688c9"
+  revision = "b4135892859b107426650959e710c5b093696e6b"
 
 [[projects]]
   branch = "master"

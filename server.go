@@ -30,28 +30,17 @@ func (l Listeners) Tasks() task.Slice {
 }
 
 type Server struct {
-	task.Tasks
 	Config            *Config
 	Handler           http.Handler
 	listeners         Listeners
 	log               *logging.Logger
 	listenerCallbacks []func(lis *Listener)
+
+	tasks task.Slice
 }
 
 func NewServer(cfg *Config, handler http.Handler) *Server {
 	s := &Server{Config: cfg, Handler: handler}
-	s.PreRun(func(ta task.Appender) (err error) {
-		if len(s.listeners) == 0 {
-			if err = s.InitListeners(); err != nil {
-				return
-			}
-		}
-
-		if len(s.listeners) == 0 {
-			return ErrNoListenersFound
-		}
-		return ta.AddTask(s.listeners.Tasks()...)
-	})
 	s.SetLog(log)
 	return s
 }
@@ -62,30 +51,41 @@ func (s *Server) OnListener(f ...func(lis *Listener)) {
 
 func (s *Server) SetLog(log *logging.Logger) {
 	s.log = log
-	s.Tasks.SetLog(log)
 }
 
 func (s *Server) Listeners() []*Listener {
 	return s.listeners
 }
 
-func (s *Server) Start(done func()) (stop task.Stoper, err error) {
-	var ostop task.Stoper
-	ostop, err = s.Tasks.Start(func() {
-		s.log.Info("done.")
-		done()
-	})
-	if err == nil {
-		stop = task.NewStoper(func() {
-			defer ostop.Stop()
-			s.log.Info("stop required")
-		}, ostop.IsRunning)
+func (s *Server) Setup(appender task.Appender) (err error) {
+	if len(s.listeners) == 0 {
+		if err = s.InitListeners(); err != nil {
+			return
+		}
 	}
+
+	if len(s.listeners) == 0 {
+		return ErrNoListenersFound
+	}
+
 	return
 }
 
+func (s *Server) Run() (err error) {
+	return s.tasks.Run()
+}
+
+func (s *Server) Start(done func()) (stop task.Stoper, err error) {
+	return task.Start(func(state *task.State) {
+		done()
+	}, s.tasks...)
+}
+
 func (s *Server) InitListeners() (err error) {
-	var listeners = make([]*Listener, len(s.Config.Servers))
+	var (
+		listeners = make([]*Listener, len(s.Config.Servers))
+		tasks     = make(task.Slice, len(s.Config.Servers))
+	)
 	log := s.log
 	for i, srvCfg := range s.Config.Servers {
 		addr := srvCfg.Addr
@@ -116,8 +116,10 @@ func (s *Server) InitListeners() (err error) {
 				cb(lis)
 			}
 			listeners[i] = lis
+			tasks[i] = lis
 		}
 	}
 	s.listeners = listeners
+	s.tasks = tasks
 	return nil
 }
