@@ -100,10 +100,10 @@ func (s *Server) InitListeners() (err error) {
 				}
 			}(addr.UnixPath())
 		}
-		log.Infof("Creating listener of %q", addr)
 		if l, err := addr.CreateListener(); err != nil {
 			return err
 		} else {
+			log.Infof("listening on %s", l.Addr().String())
 			var srv *http.Server
 			if srv, err = srvCfg.CreateServer(); err != nil {
 				return err
