@@ -13,25 +13,11 @@ import (
 	"github.com/op/go-logging"
 )
 
-type tcpKeepAliveListener struct {
-	net.Listener
-}
-
-func (ln tcpKeepAliveListener) Accept() (net.Conn, error) {
-	c, err := ln.Listener.Accept()
-	if err != nil {
-		return nil, err
-	}
-	tc := c.(*connection).Conn.(*net.TCPConn)
-	tc.SetKeepAlive(true)
-	tc.SetKeepAlivePeriod(3 * time.Minute)
-	return c, nil
-}
-
 type Listener struct {
 	net.Listener
 
 	Server      *http.Server
+	KeepAlive   time.Duration
 	Tls         *TlsConfig
 	running     bool
 	Log         *logging.Logger
@@ -176,7 +162,7 @@ func (l *Listener) IsRunning() bool {
 func (l *Listener) ListenAndServe() error {
 	if l.Tls != nil && l.Tls.Valid() {
 		defer l.Listener.Close()
-		return l.Server.ServeTLS(tcpKeepAliveListener{l}, l.Tls.CertFile, l.Tls.KeyFile)
+		return l.Server.ServeTLS(l, l.Tls.CertFile, l.Tls.KeyFile)
 	}
 	return l.Server.Serve(l)
 }

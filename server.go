@@ -2,8 +2,11 @@ package httpu
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"net/http"
-	"syscall"
+	"os"
+	"time"
 
 	"github.com/moisespsena-go/task"
 
@@ -84,34 +87,67 @@ func (s *Server) Start(done func()) (stop task.Stoper, err error) {
 
 func (s *Server) InitListeners() (err error) {
 	var (
-		listeners = make([]*Listener, len(s.Config.Servers))
-		tasks     = make(task.Slice, len(s.Config.Servers))
+		listeners = make([]*Listener, len(s.Config.Listeners))
+		tasks     = make(task.Slice, len(s.Config.Listeners))
 	)
-	log := s.log
-	for i, srvCfg := range s.Config.Servers {
-		addr := srvCfg.Addr
-		if addr.IsUnix() {
-			defer func(pth string) func() {
-				return func() {
-					log.Info("Removing", pth)
-					if err := syscall.Unlink(pth); err != nil {
-						log.Errorf("Removing %q failed: %s", pth, err)
-					}
+
+	defer func() {
+		if err != nil {
+			for _, l := range listeners {
+				if l == nil {
+					break
 				}
-			}(addr.UnixPath())
+				l.Close()
+			}
 		}
-		if l, err := addr.CreateListener(); err != nil {
-			return err
+	}()
+
+	log := s.log
+	for i, cfg := range s.Config.Listeners {
+		addr := cfg.Addr
+		var keepAlive time.Duration
+		if addr.IsUnix() {
+			if _, err2 := os.Stat(addr.UnixPath()); err2 == nil {
+				pth := addr.UnixPath()
+				log.Info("Removing", pth)
+				if err = os.Remove(pth); err != nil {
+					return
+				}
+			}
+		} else if cfg.KeepAlive != nil {
+			keepAlive, err = cfg.KeepAlive.Get()
+			if err != nil {
+				err = fmt.Errorf("get tcp keep alive failed: %v", err)
+				return
+			}
+		}
+		var l net.Listener
+		if l, err = addr.CreateListener(); err != nil {
+			return
 		} else {
 			log.Infof("listening on %s", l.Addr().String())
+
+			if !addr.IsUnix() {
+				if keepAlive != 0 {
+					l = tcpKeepAliveListener{l, keepAlive}
+				} else if cfg.Tls.Valid() {
+					l = tcpKeepAliveListener{l, 3 * time.Minute}
+				}
+			}
+
 			var srv *http.Server
-			if srv, err = srvCfg.CreateServer(); err != nil {
-				return err
+			if srv, err = cfg.CreateServer(); err != nil {
+				return
 			}
 			srv.Handler = s.Handler
-			lis := &Listener{Server: srv, Listener: l, Log: defaultlogger.NewLogger(pkg + " L{" + string(srvCfg.Addr) + "}")}
-			if srvCfg.Tls.Valid() {
-				lis.Tls = &TlsConfig{srvCfg.Tls.CertFile, srvCfg.Tls.KeyFile, srvCfg.Tls.NPNDisabled}
+			lis := &Listener{
+				Server:    srv,
+				Listener:  l,
+				KeepAlive: keepAlive,
+				Log:       defaultlogger.NewLogger(pkg + " L{" + string(cfg.Addr) + "}"),
+			}
+			if cfg.Tls.Valid() {
+				lis.Tls = &TlsConfig{cfg.Tls.CertFile, cfg.Tls.KeyFile, cfg.Tls.NPNDisabled}
 			}
 			for _, cb := range s.listenerCallbacks {
 				cb(lis)
@@ -122,7 +158,7 @@ func (s *Server) InitListeners() (err error) {
 	}
 	s.listeners = listeners
 	s.tasks = tasks
-	return nil
+	return
 }
 
 func (s *Server) Shutdown(ctx context.Context) (err error) {
