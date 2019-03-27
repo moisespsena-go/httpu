@@ -12,8 +12,8 @@ import (
 
 	"github.com/go-errors/errors"
 
+	"github.com/moisespsena-go/path-helpers"
 	"github.com/moisespsena/go-default-logger"
-	"github.com/moisespsena/go-path-helpers"
 	"github.com/op/go-logging"
 )
 
@@ -105,7 +105,7 @@ func (s *Server) InitListeners() (err error) {
 	log := s.log
 	for i, cfg := range s.Config.Listeners {
 		addr := cfg.Addr
-		var keepAlive time.Duration
+		var kl *KeepAliveListener
 		if addr.IsUnix() {
 			if _, err2 := os.Stat(addr.UnixPath()); err2 == nil {
 				pth := addr.UnixPath()
@@ -114,11 +114,32 @@ func (s *Server) InitListeners() (err error) {
 					return
 				}
 			}
-		} else if cfg.KeepAlive != nil {
-			keepAlive, err = cfg.KeepAlive.Get()
-			if err != nil {
-				err = fmt.Errorf("get tcp keep alive failed: %v", err)
-				return
+		} else {
+			kl = NewKeepAliveListener(nil)
+			if cfg.KeepAliveInterval != nil {
+				var dur time.Duration
+				dur, err = cfg.KeepAliveInterval.Get()
+				if err != nil {
+					err = fmt.Errorf("get KeepAliveInterval failed: %v", err)
+					return
+				}
+				if dur != 0 {
+					kl.KeepAliveInterval = dur
+				}
+			}
+			if cfg.KeepAliveIdleIntervaç != nil {
+				var dur time.Duration
+				dur, err = cfg.KeepAliveIdleIntervaç.Get()
+				if err != nil {
+					err = fmt.Errorf("get KeepAliveIdleIntervaç failed: %v", err)
+					return
+				}
+				if dur != 0 {
+					kl.KeepAliveIdleInterval = dur
+				}
+			}
+			if cfg.KeepAliveCount != 0 {
+				kl.KeepAliveCount = cfg.KeepAliveCount
 			}
 		}
 		var l net.Listener
@@ -128,11 +149,8 @@ func (s *Server) InitListeners() (err error) {
 			log.Infof("listening on %s", l.Addr().String())
 
 			if !addr.IsUnix() {
-				if keepAlive != 0 {
-					l = tcpKeepAliveListener{l, keepAlive}
-				} else if cfg.Tls.Valid() {
-					l = tcpKeepAliveListener{l, 3 * time.Minute}
-				}
+				kl.Listener = l
+				l = kl
 			}
 
 			var srv *http.Server
@@ -141,10 +159,9 @@ func (s *Server) InitListeners() (err error) {
 			}
 			srv.Handler = s.Handler
 			lis := &Listener{
-				Server:    srv,
-				Listener:  l,
-				KeepAlive: keepAlive,
-				Log:       defaultlogger.NewLogger(pkg + " L{" + string(cfg.Addr) + "}"),
+				Server:   srv,
+				Listener: l,
+				Log:      defaultlogger.NewLogger(pkg + " L{" + string(cfg.Addr) + "}"),
 			}
 			if cfg.Tls.Valid() {
 				lis.Tls = &TlsConfig{cfg.Tls.CertFile, cfg.Tls.KeyFile, cfg.Tls.NPNDisabled}

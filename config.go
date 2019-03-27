@@ -48,10 +48,19 @@ func (ka KeepAliveConfig) Get() (dur time.Duration, err error) {
 }
 
 type ListenerConfig struct {
-	Addr      Addr
-	Tls       TlsConfig
-	Http2     Http2Config
-	KeepAlive *KeepAliveConfig
+	Addr  Addr
+	Tls   TlsConfig
+	Http2 Http2Config
+
+	// DefaultKeepAliveCount specifies maximal number of keepalive messages
+	// sent before marking connection as dead.
+	KeepAliveCount int
+	// DefaultKeepAliveIdleInterval specifies how long connection can be idle
+	// before sending keepalive message.
+	KeepAliveIdleIntervaç *KeepAliveConfig
+	// DefaultKeepAliveInterval specifies how often retry sending keepalive
+	// messages when no response is received.
+	KeepAliveInterval *KeepAliveConfig
 }
 
 func (cfg *ListenerConfig) CreateServer() (s *http.Server, err error) {

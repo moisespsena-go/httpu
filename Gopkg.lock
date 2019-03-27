@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:50cf302cc52eb618cec25d4daf167ed5593145d43b447b906a9f0d24e271d48b"
+  name = "github.com/felixge/tcpkeepalive"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5bb0b2dea91e0de550022159b9571aafc72c08ba"
+
+[[projects]]
   digest = "1:aacef5f5e45685f2aeda5534d0a750dee6859de7e9088cdd06192787bb01ae6d"
   name = "github.com/go-errors/errors"
   packages = ["."]
@@ -19,11 +27,35 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:89cc543292f2af3d1e7939a5ef626dfd58f8aca5a424e8a0eab185045dee09b0"
+  digest = "1:08c430c7b7ab0dd7f94889af18129fe0736ab2cd4df5d54e8937a706b8d9ec9a"
+  name = "github.com/moisespsena-go/default-logger"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "d03cb4229ba7fbcda79d1eeb49547abf779b7bb8"
+
+[[projects]]
+  branch = "master"
+  digest = "1:cd89d69c98808f0950ede4417683c5021a58226233ded86ad26ab8e038f093c5"
+  name = "github.com/moisespsena-go/error-wrap"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "b41f4523ee577dec73ab62cdf1c233bfe0a26139"
+
+[[projects]]
+  branch = "master"
+  digest = "1:df263dc103bcfb822a91d20dfc7712af00f0710f29442515ce3f769fe5433e9c"
+  name = "github.com/moisespsena-go/path-helpers"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "10fc831782671524d4634ff4005c7e63d31b0139"
+
+[[projects]]
+  branch = "master"
+  digest = "1:aa973d31840e796fae7e736350a748e91a0227e8c124d9520b5640a2d129457e"
   name = "github.com/moisespsena-go/task"
   packages = ["."]
   pruneopts = "UT"
-  revision = "b4135892859b107426650959e710c5b093696e6b"
+  revision = "77afe0a8006108bc5940dc3f9b9454c7c7788f47"
 
 [[projects]]
   branch = "master"
@@ -40,14 +72,6 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "7e8df00a35080dff30e766ff640b1be4e7870304"
-
-[[projects]]
-  branch = "master"
-  digest = "1:721fd84b39c36063ca1cb828749e5b1e6b322cf41f0092ceb1309e56158c3d77"
-  name = "github.com/moisespsena/go-path-helpers"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "886e2ca0ba2e7f95543fb0e52d208c16a87b1b79"
 
 [[projects]]
   digest = "1:5b3b29ce0e569f62935d9541dff2e16cc09df981ebde48e82259076a73a3d0c7"
@@ -67,7 +91,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a7e7d4a2763c58f27ccd9c712d073b3972ee8ba2780e652a8e918c7ef43149bf"
+  digest = "1:c8879109b3d04b0a15c587821781276273901bcb71da902757eac904b271f672"
   name = "golang.org/x/net"
   packages = [
     "http/httpguts",
@@ -76,7 +100,7 @@
     "idna",
   ]
   pruneopts = "UT"
-  revision = "e3b2ff56ed879efa686c9d09ed74f9bfe42f1a1d"
+  revision = "710a502c58a2a4b2d7417a4e24ccb96d8dc13fa3"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
@@ -105,10 +129,11 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/felixge/tcpkeepalive",
     "github.com/go-errors/errors",
+    "github.com/moisespsena-go/path-helpers",
     "github.com/moisespsena-go/task",
     "github.com/moisespsena/go-default-logger",
-    "github.com/moisespsena/go-path-helpers",
     "github.com/op/go-logging",
     "golang.org/x/net/http2",
   ]
