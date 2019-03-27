@@ -127,11 +127,11 @@ func (s *Server) InitListeners() (err error) {
 					kl.KeepAliveInterval = dur
 				}
 			}
-			if cfg.KeepAliveIdleIntervaç != nil {
+			if cfg.KeepAliveIdleInterval != nil {
 				var dur time.Duration
-				dur, err = cfg.KeepAliveIdleIntervaç.Get()
+				dur, err = cfg.KeepAliveIdleInterval.Get()
 				if err != nil {
-					err = fmt.Errorf("get KeepAliveIdleIntervaç failed: %v", err)
+					err = fmt.Errorf("get KeepAliveIdleInterval failed: %v", err)
 					return
 				}
 				if dur != 0 {

@@ -57,7 +57,7 @@ type ListenerConfig struct {
 	KeepAliveCount int
 	// DefaultKeepAliveIdleInterval specifies how long connection can be idle
 	// before sending keepalive message.
-	KeepAliveIdleIntervaç *KeepAliveConfig
+	KeepAliveIdleInterval *KeepAliveConfig
 	// DefaultKeepAliveInterval specifies how often retry sending keepalive
 	// messages when no response is received.
 	KeepAliveInterval *KeepAliveConfig
