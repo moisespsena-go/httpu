@@ -13,9 +13,9 @@ import (
 
 func main() {
 	srv := httpu.NewServer(&httpu.Config{
-		Servers: []httpu.ServerConfig{
+		Listeners: []httpu.ListenerConfig{
 			{Addr: httpu.Addr(":9000")},
-			{Addr: httpu.Addr(":9002"), Tls: httpu.TlsConfig{CertFile: "server.crt", KeyFile: "server.key"}},
+			//{Addr: httpu.Addr(":9002"), Tls: httpu.TlsConfig{CertFile: "server.crt", KeyFile: "server.key"}},
 		},
 	}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		println("request start")
@@ -36,9 +36,9 @@ func main() {
 	}()
 
 	go func() {
-		<-time.After(20 * time.Second)
+		<-time.After(10 * time.Second)
 		println("closing")
-		ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		log.Println(srv.Shutdown(ctx))
 		println("closed")
 	}()

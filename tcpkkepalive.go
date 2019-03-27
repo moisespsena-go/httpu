@@ -15,7 +15,7 @@ func (ln tcpKeepAliveListener) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	tc := c.(*connection).Conn.(*net.TCPConn)
+	tc := c.(*net.TCPConn)
 	tc.SetKeepAlive(true)
 	tc.SetKeepAlivePeriod(ln.duration)
 	return c, nil
