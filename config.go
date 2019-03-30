@@ -78,4 +78,7 @@ func (cfg *ListenerConfig) CreateServer() (s *http.Server, err error) {
 
 type Config struct {
 	Listeners []ListenerConfig
+
+	UrlPrefixHeader         string `mapstructure:"url_prefix_header" yaml:"url_prefix_header"`
+	DisableUrlPrefixRemover bool   `mapstructure:"disable_url_prefix_remover" yaml:"disable_url_prefix_remover"`
 }

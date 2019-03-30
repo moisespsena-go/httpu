@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/moisespsena-go/task"
@@ -21,6 +22,14 @@ var (
 	pkg                 = path_helpers.GetCalledDir()
 	log                 = defaultlogger.NewLogger(pkg)
 	ErrNoListenersFound = errors.New("No listeners found")
+)
+
+type ContextKey int
+
+const (
+	DefaultUrlPrefixHeader = "X-Url-Prefix"
+
+	CTX_URL_PREFIX ContextKey = 1
 )
 
 type Listeners []*Listener
@@ -113,6 +122,28 @@ func (s *Server) Start(done func()) (stop task.Stoper, err error) {
 	}, s.tasks...)
 }
 
+func (s *Server) GetHandler() (h http.Handler) {
+	if !s.Config.DisableUrlPrefixRemover {
+		if s.Config.UrlPrefixHeader == "" {
+			s.Config.UrlPrefixHeader = DefaultUrlPrefixHeader
+		}
+
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if prefix := r.Header.Get(s.Config.UrlPrefixHeader); prefix != "" {
+				if !strings.HasSuffix(prefix, "/") {
+					prefix += "/"
+				}
+
+				if ctx := r.Context(); ctx.Value(CTX_URL_PREFIX) == nil {
+					r = r.WithContext(context.WithValue(ctx, CTX_URL_PREFIX, prefix))
+				}
+			}
+			s.Handler.ServeHTTP(w, r)
+		})
+	}
+	return s.Handler
+}
+
 func (s *Server) InitListeners() (err error) {
 	var (
 		listeners = make([]*Listener, len(s.Config.Listeners))
@@ -185,7 +216,7 @@ func (s *Server) InitListeners() (err error) {
 			if srv, err = cfg.CreateServer(); err != nil {
 				return
 			}
-			srv.Handler = s.Handler
+			srv.Handler = s.GetHandler()
 			lis := &Listener{
 				Server:   srv,
 				Listener: l,
