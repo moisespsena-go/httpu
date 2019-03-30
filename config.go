@@ -79,6 +79,8 @@ func (cfg *ListenerConfig) CreateServer() (s *http.Server, err error) {
 type Config struct {
 	Listeners []ListenerConfig
 
-	UrlPrefixHeader         string `mapstructure:"url_prefix_header" yaml:"url_prefix_header"`
-	DisableUrlPrefixRemover bool   `mapstructure:"disable_url_prefix_remover" yaml:"disable_url_prefix_remover"`
+	Prefix                        string
+	RequestPrefixHeader           string `mapstructure:"request_prefix_header" yaml:"request_prefix_header"`
+	DisableStripRequestPrefix     bool   `mapstructure:"disable_strip_request_prefix" yaml:"disable_strip_request_prefix"`
+	DisableSlashPermanentRedirect bool   `mapstructure:"disable_slash_permanent_redirect" yaml:"disable_slash_permanent_redirect"`
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -27,9 +28,9 @@ var (
 type ContextKey int
 
 const (
-	DefaultUrlPrefixHeader = "X-Url-Prefix"
+	DefaultUriPrefixHeader = "X-Uri-Prefix"
 
-	CTX_URL_PREFIX ContextKey = 1
+	CtxPrefix ContextKey = 1
 )
 
 type Listeners []*Listener
@@ -45,6 +46,7 @@ func (l Listeners) Tasks() task.Slice {
 type Server struct {
 	Config              *Config
 	Handler             http.Handler
+	handler             http.Handler
 	listeners           Listeners
 	log                 *logging.Logger
 	listenerCallbacks   []func(lis *Listener)
@@ -87,7 +89,37 @@ func (s *Server) Listeners() []*Listener {
 	return s.listeners
 }
 
+func (s *Server) Prepare() {
+	if s.Config.Prefix != "" && !strings.HasSuffix(s.Config.Prefix, "/") {
+		s.Config.Prefix += "/"
+	}
+	if !s.Config.DisableStripRequestPrefix && s.Config.RequestPrefixHeader == "" {
+		s.Config.RequestPrefixHeader = DefaultUriPrefixHeader
+	}
+
+	if !s.Config.DisableStripRequestPrefix || s.Config.Prefix != "" {
+		s.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var prefix = "/"
+			if !s.Config.DisableStripRequestPrefix {
+				if pfx := r.Header.Get(s.Config.RequestPrefixHeader); pfx != "" {
+					prefix += pfx[1:]
+				}
+			}
+
+			if s.Config.Prefix != "" {
+				prefix += s.Config.Prefix[1:]
+			}
+
+			StripPrefix(w, r, s.Handler, prefix, !s.Config.DisableSlashPermanentRedirect)
+		})
+	} else {
+		s.handler = s.Handler
+	}
+}
+
 func (s *Server) Setup(appender task.Appender) (err error) {
+	s.Prepare()
+
 	for _, ps := range s.preSetup {
 		if err = ps(appender); err != nil {
 			return fmt.Errorf("server pre_setup failed: %v", err.Error())
@@ -120,28 +152,6 @@ func (s *Server) Start(done func()) (stop task.Stoper, err error) {
 	return task.Start(func(state *task.State) {
 		done()
 	}, s.tasks...)
-}
-
-func (s *Server) GetHandler() (h http.Handler) {
-	if !s.Config.DisableUrlPrefixRemover {
-		if s.Config.UrlPrefixHeader == "" {
-			s.Config.UrlPrefixHeader = DefaultUrlPrefixHeader
-		}
-
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if prefix := r.Header.Get(s.Config.UrlPrefixHeader); prefix != "" {
-				if !strings.HasSuffix(prefix, "/") {
-					prefix += "/"
-				}
-
-				if ctx := r.Context(); ctx.Value(CTX_URL_PREFIX) == nil {
-					r = r.WithContext(context.WithValue(ctx, CTX_URL_PREFIX, prefix))
-				}
-			}
-			s.Handler.ServeHTTP(w, r)
-		})
-	}
-	return s.Handler
 }
 
 func (s *Server) InitListeners() (err error) {
@@ -216,7 +226,11 @@ func (s *Server) InitListeners() (err error) {
 			if srv, err = cfg.CreateServer(); err != nil {
 				return
 			}
-			srv.Handler = s.GetHandler()
+			if s.handler == nil {
+				srv.Handler = s.Handler
+			} else {
+				srv.Handler = s.handler
+			}
 			lis := &Listener{
 				Server:   srv,
 				Listener: l,
@@ -243,4 +257,37 @@ func (s *Server) Shutdown(ctx context.Context) (err error) {
 	}
 
 	return s.listeners[0].ShutdownLog(ctx)
+}
+
+func StripPrefix(w http.ResponseWriter, r *http.Request, handler http.Handler, prefix string, slashPermanentRedirect bool) {
+	if prefix == "" {
+		handler.ServeHTTP(w, r)
+		return
+	}
+
+	if (r.URL.Path + "/") == prefix {
+		if slashPermanentRedirect {
+			http.Redirect(w, r, prefix, http.StatusPermanentRedirect)
+		} else {
+			http.Redirect(w, r, prefix, http.StatusTemporaryRedirect)
+		}
+		return
+	}
+
+	if prefix != "/" {
+		if p := "/" + strings.TrimPrefix(r.URL.Path, prefix); len(p) < len(r.URL.Path) {
+			r = r.WithContext(context.WithValue(r.Context(), CtxPrefix, prefix))
+			r2 := new(http.Request)
+			*r2 = *r
+			r2.URL = new(url.URL)
+			*r2.URL = *r.URL
+			r2.URL.Path = p
+			handler.ServeHTTP(w, r2)
+		} else {
+			http.NotFound(w, r)
+		}
+		return
+	}
+
+	handler.ServeHTTP(w, r)
 }
