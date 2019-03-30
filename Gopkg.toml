@@ -35,10 +35,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/moisespsena/go-default-logger"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/moisespsena-go/path-helpers"
 
 [[constraint]]

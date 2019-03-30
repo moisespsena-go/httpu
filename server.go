@@ -12,8 +12,8 @@ import (
 
 	"github.com/go-errors/errors"
 
+	"github.com/moisespsena-go/default-logger"
 	"github.com/moisespsena-go/path-helpers"
-	"github.com/moisespsena/go-default-logger"
 	"github.com/op/go-logging"
 )
 
@@ -34,11 +34,12 @@ func (l Listeners) Tasks() task.Slice {
 }
 
 type Server struct {
-	Config            *Config
-	Handler           http.Handler
-	listeners         Listeners
-	log               *logging.Logger
-	listenerCallbacks []func(lis *Listener)
+	Config              *Config
+	Handler             http.Handler
+	listeners           Listeners
+	log                 *logging.Logger
+	listenerCallbacks   []func(lis *Listener)
+	preSetup, postSetup []func(ta task.Appender) error
 
 	tasks task.Slice
 }
@@ -47,6 +48,22 @@ func NewServer(cfg *Config, handler http.Handler) *Server {
 	s := &Server{Config: cfg, Handler: handler}
 	s.SetLog(log)
 	return s
+}
+
+func (s *Server) PreSetup(f ...func(ta task.Appender) error) {
+	s.preSetup = append(s.preSetup, f...)
+}
+
+func (s *Server) GetPreSetup() []func(ta task.Appender) error {
+	return s.preSetup
+}
+
+func (s *Server) PostSetup(f ...func(ta task.Appender) error) {
+	s.postSetup = append(s.postSetup, f...)
+}
+
+func (s *Server) GetPostSetup() []func(ta task.Appender) error {
+	return s.postSetup
 }
 
 func (s *Server) OnListener(f ...func(lis *Listener)) {
@@ -62,6 +79,12 @@ func (s *Server) Listeners() []*Listener {
 }
 
 func (s *Server) Setup(appender task.Appender) (err error) {
+	for _, ps := range s.preSetup {
+		if err = ps(appender); err != nil {
+			return fmt.Errorf("server pre_setup failed: %v", err.Error())
+		}
+	}
+
 	if len(s.listeners) == 0 {
 		if err = s.InitListeners(); err != nil {
 			return
@@ -72,6 +95,11 @@ func (s *Server) Setup(appender task.Appender) (err error) {
 		return ErrNoListenersFound
 	}
 
+	for _, ps := range s.postSetup {
+		if err = ps(appender); err != nil {
+			return fmt.Errorf("server post_setup failed: %v", err.Error())
+		}
+	}
 	return
 }
 
