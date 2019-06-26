@@ -51,3 +51,22 @@ func Prefix(ctx context.Context) string {
 func PrefixR(r *http.Request) string {
 	return Prefix(r.Context())
 }
+
+func PrefixHandler(prefix string, handler http.Handler, defaultHandler ...http.Handler) http.Handler {
+	if !strings.HasSuffix(prefix, "/") {
+		panic("bad prefix")
+	}
+	newHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = PushPrefixR(r, prefix)
+		var URL = *r.URL
+		URL.Path = "/" + strings.TrimPrefix(URL.Path, prefix)
+		r.URL = &URL
+		handler.ServeHTTP(w, r)
+	})
+	if len(defaultHandler) == 0 || defaultHandler[0] == nil {
+		return newHandler
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defaultHandler[0].ServeHTTP(w, r)
+	})
+}

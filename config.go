@@ -6,6 +6,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/moisespsena-go/iputils"
+
+	"crypto/rsa"
+	"crypto/x509"
+	"os"
+
 	"golang.org/x/net/http2"
 )
 
@@ -20,8 +26,26 @@ type TlsConfig struct {
 	NPNDisabled bool
 }
 
-func (tls *TlsConfig) Valid() bool {
-	return tls.CertFile != "" && tls.KeyFile != ""
+func (cfg *TlsConfig) Valid() bool {
+	return cfg.CertFile != "" && cfg.KeyFile != ""
+}
+
+func (cfg *TlsConfig) Load() (key *rsa.PrivateKey, cert *x509.Certificate, err error) {
+	if !cfg.Valid() {
+		return nil, nil, os.ErrNotExist
+	}
+	keyPair, err := tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
+	if err != nil {
+		panic(err) // TODO handle error
+	}
+	keyPair.Leaf, err = x509.ParseCertificate(keyPair.Certificate[0])
+	if err != nil {
+		panic(err) // TODO handle error
+	}
+
+	key = keyPair.PrivateKey.(*rsa.PrivateKey)
+	cert = keyPair.Leaf
+	return
 }
 
 // KeepAliveConfig TCP keep alive duration.
@@ -83,4 +107,6 @@ type Config struct {
 	RequestPrefixHeader           string `mapstructure:"request_prefix_header" yaml:"request_prefix_header"`
 	DisableStripRequestPrefix     bool   `mapstructure:"disable_strip_request_prefix" yaml:"disable_strip_request_prefix"`
 	DisableSlashPermanentRedirect bool   `mapstructure:"disable_slash_permanent_redirect" yaml:"disable_slash_permanent_redirect"`
+
+	ForwardedFor []iputils.IPRange `mapstructure:"forwarded_for" yaml:"forwarded_for"`
 }

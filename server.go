@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/moisespsena-go/httpu/middlewares"
+	"github.com/moisespsena-go/iputils"
 
 	"github.com/moisespsena-go/task"
 
@@ -89,7 +91,7 @@ func (s *Server) Listeners() []*Listener {
 	return s.listeners
 }
 
-func (s *Server) Prepare() {
+func (s *Server) Prepare() (err error) {
 	if s.Config.Prefix != "" && !strings.HasSuffix(s.Config.Prefix, "/") {
 		s.Config.Prefix += "/"
 	}
@@ -115,10 +117,32 @@ func (s *Server) Prepare() {
 	} else {
 		s.handler = s.Handler
 	}
+
+	if len(s.Config.ForwardedFor) > 0 {
+		var proxiers []iputils.Container
+		for _, ff := range s.Config.ForwardedFor {
+			rg, err := ff.Range()
+			if err != nil {
+				return fmt.Errorf("ip range for forwarded_for %q failed: %s", string(ff), err.Error())
+			}
+			proxiers = append(proxiers, rg)
+		}
+		s.handler = middlewares.RemoteAddrHeaderMiddleware(func(r *http.Request) bool {
+			if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+				if ip := net.ParseIP(host); ip != nil {
+					return iputils.Contains(proxiers, ip)
+				}
+			}
+			return false
+		})(s.handler)
+	}
+	return
 }
 
 func (s *Server) Setup(appender task.Appender) (err error) {
-	s.Prepare()
+	if err = s.Prepare(); err != nil {
+		return
+	}
 
 	for _, ps := range s.preSetup {
 		if err = ps(appender); err != nil {
@@ -257,37 +281,4 @@ func (s *Server) Shutdown(ctx context.Context) (err error) {
 	}
 
 	return s.listeners[0].ShutdownLog(ctx)
-}
-
-func StripPrefix(w http.ResponseWriter, r *http.Request, handler http.Handler, prefix string, slashPermanentRedirect bool) {
-	if prefix == "" {
-		handler.ServeHTTP(w, r)
-		return
-	}
-
-	if (r.URL.Path + "/") == prefix {
-		if slashPermanentRedirect {
-			http.Redirect(w, r, prefix, http.StatusPermanentRedirect)
-		} else {
-			http.Redirect(w, r, prefix, http.StatusTemporaryRedirect)
-		}
-		return
-	}
-
-	if prefix != "/" {
-		if p := "/" + strings.TrimPrefix(r.URL.Path, prefix); len(p) < len(r.URL.Path) {
-			r = r.WithContext(context.WithValue(r.Context(), CtxPrefix, prefix))
-			r2 := new(http.Request)
-			*r2 = *r
-			r2.URL = new(url.URL)
-			*r2.URL = *r.URL
-			r2.URL.Path = p
-			handler.ServeHTTP(w, r2)
-		} else {
-			http.NotFound(w, r)
-		}
-		return
-	}
-
-	handler.ServeHTTP(w, r)
 }
