@@ -9,21 +9,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/moisespsena-go/httpu/middlewares"
-	"github.com/moisespsena-go/iputils"
+	"github.com/moisespsena-go/middleware"
 
 	"github.com/moisespsena-go/task"
 
 	"github.com/go-errors/errors"
 
-	"github.com/moisespsena-go/default-logger"
-	"github.com/moisespsena-go/path-helpers"
-	"github.com/op/go-logging"
+	defaultlogger "github.com/moisespsena-go/default-logger"
+	"github.com/moisespsena-go/logging"
+	path_helpers "github.com/moisespsena-go/path-helpers"
 )
 
 var (
 	pkg                 = path_helpers.GetCalledDir()
-	log                 = defaultlogger.NewLogger(pkg)
+	log                 = defaultlogger.GetOrCreateLogger(pkg)
 	ErrNoListenersFound = errors.New("No listeners found")
 )
 
@@ -50,7 +49,7 @@ type Server struct {
 	Handler             http.Handler
 	handler             http.Handler
 	listeners           Listeners
-	log                 *logging.Logger
+	log                 logging.Logger
 	listenerCallbacks   []func(lis *Listener)
 	preSetup, postSetup []func(ta task.Appender) error
 
@@ -83,7 +82,7 @@ func (s *Server) OnListener(f ...func(lis *Listener)) {
 	s.listenerCallbacks = append(s.listenerCallbacks, f...)
 }
 
-func (s *Server) SetLog(log *logging.Logger) {
+func (s *Server) SetLog(log logging.Logger) {
 	s.log = log
 }
 
@@ -118,24 +117,7 @@ func (s *Server) Prepare() (err error) {
 		s.handler = s.Handler
 	}
 
-	if len(s.Config.ForwardedFor) > 0 {
-		var proxiers []iputils.Container
-		for _, ff := range s.Config.ForwardedFor {
-			rg, err := ff.Range()
-			if err != nil {
-				return fmt.Errorf("ip range for forwarded_for %q failed: %s", string(ff), err.Error())
-			}
-			proxiers = append(proxiers, rg)
-		}
-		s.handler = middlewares.RemoteAddrHeaderMiddleware(func(r *http.Request) bool {
-			if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-				if ip := net.ParseIP(host); ip != nil {
-					return iputils.Contains(proxiers, ip)
-				}
-			}
-			return false
-		})(s.handler)
-	}
+	s.handler = middleware.PostLimit(s.Config.MaxPostSize)(s.handler)
 	return
 }
 
@@ -258,7 +240,7 @@ func (s *Server) InitListeners() (err error) {
 			lis := &Listener{
 				Server:   srv,
 				Listener: l,
-				Log:      defaultlogger.NewLogger(pkg + " L{" + string(cfg.Addr) + "}"),
+				Log:      logging.WithPrefix(log, "{"+string(cfg.Addr)+"}", ":"),
 			}
 			if cfg.Tls.Valid() {
 				lis.Tls = &TlsConfig{cfg.Tls.CertFile, cfg.Tls.KeyFile, cfg.Tls.NPNDisabled}

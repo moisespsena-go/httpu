@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/moisespsena-go/iputils"
-
 	"crypto/rsa"
 	"crypto/x509"
 	"os"
@@ -107,6 +105,5 @@ type Config struct {
 	RequestPrefixHeader           string `mapstructure:"request_prefix_header" yaml:"request_prefix_header"`
 	DisableStripRequestPrefix     bool   `mapstructure:"disable_strip_request_prefix" yaml:"disable_strip_request_prefix"`
 	DisableSlashPermanentRedirect bool   `mapstructure:"disable_slash_permanent_redirect" yaml:"disable_slash_permanent_redirect"`
-
-	ForwardedFor []iputils.IPRange `mapstructure:"forwarded_for" yaml:"forwarded_for"`
+	MaxPostSize                   int64  `mapstructure:"max_post_size" yaml:"max_post_size"`
 }

@@ -10,7 +10,7 @@ import (
 
 	"github.com/moisespsena-go/task"
 
-	"github.com/op/go-logging"
+	"github.com/moisespsena-go/logging"
 )
 
 type Listener struct {
@@ -20,7 +20,7 @@ type Listener struct {
 	KeepAlive   time.Duration
 	Tls         *TlsConfig
 	running     bool
-	Log         *logging.Logger
+	Log         logging.Logger
 	stop        bool
 	connections map[net.Conn]interface{}
 	connWg      sync.WaitGroup
