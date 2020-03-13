@@ -48,3 +48,12 @@ func RemoteIP(r *http.Request) (ip net.IP) {
 	}
 	return net.ParseIP(r.RemoteAddr)
 }
+
+func RequestURL(r *http.Request) (url string) {
+	url = "http"
+	if r.TLS != nil {
+		url += "s"
+	}
+	url += "//"
+	return
+}
