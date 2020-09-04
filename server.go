@@ -51,7 +51,7 @@ type Server struct {
 	listeners           Listeners
 	log                 logging.Logger
 	listenerCallbacks   []func(lis *Listener)
-	preSetup, postSetup []func(ta task.Appender) error
+	preSetup, postSetup []func(s *Server) error
 
 	tasks task.Slice
 }
@@ -62,19 +62,19 @@ func NewServer(cfg *Config, handler http.Handler) *Server {
 	return s
 }
 
-func (s *Server) PreSetup(f ...func(ta task.Appender) error) {
+func (s *Server) PreSetup(f ...func(s *Server) error) {
 	s.preSetup = append(s.preSetup, f...)
 }
 
-func (s *Server) GetPreSetup() []func(ta task.Appender) error {
+func (s *Server) GetPreSetup() []func(s *Server) error {
 	return s.preSetup
 }
 
-func (s *Server) PostSetup(f ...func(ta task.Appender) error) {
+func (s *Server) PostSetup(f ...func(s *Server) error) {
 	s.postSetup = append(s.postSetup, f...)
 }
 
-func (s *Server) GetPostSetup() []func(ta task.Appender) error {
+func (s *Server) GetPostSetup() []func(s *Server) error {
 	return s.postSetup
 }
 
@@ -113,21 +113,23 @@ func (s *Server) Prepare() (err error) {
 
 			StripPrefix(w, r, s.Handler, prefix, !s.Config.DisableSlashPermanentRedirect)
 		})
-	} else {
-		s.handler = s.Handler
 	}
-
-	s.handler = middleware.PostLimit(s.Config.MaxPostSize)(s.handler)
+	if !s.Config.UnlimitedPostSize {
+		s.handler = middleware.PostLimit(s.Config.MaxPostSize)(s.handler)
+	}
+	if !s.Config.NotFoundDisabled {
+		s.Handler = FallbackHandlers{s.Handler, http.NotFoundHandler()}
+	}
 	return
 }
 
-func (s *Server) Setup(appender task.Appender) (err error) {
+func (s *Server) Setup() (err error) {
 	if err = s.Prepare(); err != nil {
 		return
 	}
 
 	for _, ps := range s.preSetup {
-		if err = ps(appender); err != nil {
+		if err = ps(s); err != nil {
 			return fmt.Errorf("server pre_setup failed: %v", err.Error())
 		}
 	}
@@ -143,7 +145,7 @@ func (s *Server) Setup(appender task.Appender) (err error) {
 	}
 
 	for _, ps := range s.postSetup {
-		if err = ps(appender); err != nil {
+		if err = ps(s); err != nil {
 			return fmt.Errorf("server post_setup failed: %v", err.Error())
 		}
 	}
@@ -242,8 +244,11 @@ func (s *Server) InitListeners() (err error) {
 				Listener: l,
 				Log:      logging.WithPrefix(log, "{"+string(cfg.Addr)+"}", ":"),
 			}
-			if cfg.Tls.Valid() {
-				lis.Tls = &TlsConfig{cfg.Tls.CertFile, cfg.Tls.KeyFile, cfg.Tls.NPNDisabled}
+			if cfg.Tls != nil {
+				if !cfg.Tls.Valid() {
+					return errors.Errorf("tls config for %q: bad cert_file and key_file value", cfg.Addr)
+				}
+				lis.Tls = &TlsConfig{cfg.Tls.Generate, cfg.Tls.CertFile, cfg.Tls.KeyFile, cfg.Tls.NPNDisabled}
 			}
 			for _, cb := range s.listenerCallbacks {
 				cb(lis)

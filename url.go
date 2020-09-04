@@ -27,26 +27,18 @@ func WsURL(r *http.Request, pth ...string) string {
 }
 
 func HttpScheme(r *http.Request) (scheme string) {
-	if scheme = r.Header.Get("X-Forwarded-Proto"); scheme == "" {
+	if scheme := r.Header.Get("X-Forwarded-Proto"); scheme == "" {
 		if r.TLS != nil {
 			return "https"
+		} else {
+			return "http"
 		}
-	}
-	if scheme == "https" {
-		return
+	} else if scheme[len(scheme)-1] == 's' {
+		return "https"
 	}
 	return "http"
 }
 
 func WsScheme(r *http.Request) (scheme string) {
-	if scheme = r.Header.Get("X-Forwarded-Proto"); scheme == "" {
-		if r.TLS != nil {
-			return "wss"
-		}
-		return "ws"
-	}
-	if scheme == "https" {
-		return "wss"
-	}
-	return "ws"
+	return "ws" + HttpScheme(r)[2:]
 }

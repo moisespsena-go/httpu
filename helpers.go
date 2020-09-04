@@ -49,11 +49,24 @@ func RemoteIP(r *http.Request) (ip net.IP) {
 	return net.ParseIP(r.RemoteAddr)
 }
 
-func RequestURL(r *http.Request) (url string) {
-	url = "http"
-	if r.TLS != nil {
-		url += "s"
+func Redirect(w http.ResponseWriter, r *http.Request, url string, status int) {
+	if r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
+		if r.Header.Get("X-Redirection-Disabled") == "true" {
+			if status < 400 {
+				w.WriteHeader(201)
+			} else {
+				w.WriteHeader(status)
+			}
+			return
+		}
+
+		w.Header().Set("X-Location", url)
+		if status < 400 {
+			w.WriteHeader(201)
+		} else {
+			w.WriteHeader(status)
+		}
+		return
 	}
-	url += "//"
-	return
+	http.Redirect(w, r, url, status)
 }

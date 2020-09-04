@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"oliva.pw/tlsgen"
+
 	"github.com/moisespsena-go/task"
 
 	"github.com/moisespsena-go/logging"
@@ -25,6 +27,7 @@ type Listener struct {
 	connections map[net.Conn]interface{}
 	connWg      sync.WaitGroup
 	mu          sync.RWMutex
+	gen         *tlsgen.Generator
 }
 
 func (l *Listener) Connections() (cons []net.Conn) {
@@ -39,11 +42,16 @@ func (l *Listener) Connections() (cons []net.Conn) {
 	return
 }
 
-func (l *Listener) Setup(appender task.Appender) error {
+func (l *Listener) Setup() error {
+	if l.Tls != nil && l.Tls.Generate != nil {
+		l.Tls.Generate.CertFile = l.Tls.CertFile
+		l.Tls.Generate.KeyFile = l.Tls.KeyFile
+		l.gen = tlsgen.New(*l.Tls.Generate)
+	}
 	return nil
 }
 
-func (l *Listener) Run() error {
+func (l *Listener) run() error {
 	l.running = true
 	defer func() {
 		l.running = false
@@ -52,11 +60,16 @@ func (l *Listener) Run() error {
 }
 
 func (l *Listener) Start(done func()) (stop task.Stoper, err error) {
+	if l.gen != nil {
+		if _, err = l.gen.Start(func() {}); err != nil {
+			return
+		}
+	}
 	go func() {
 		defer func() {
 			done()
 		}()
-		if err := l.Run(); err != nil {
+		if err := l.run(); err != nil {
 			if !l.stop {
 				l.Log.Error(err.Error())
 			}
@@ -126,6 +139,9 @@ func (l *Listener) Stop() {
 	if l.stop {
 		return
 	}
+	if l.gen != nil {
+		l.gen.Stop()
+	}
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	go l.ShutdownLog(ctx)
 }
@@ -161,6 +177,8 @@ func (l *Listener) IsRunning() bool {
 
 func (l *Listener) ListenAndServe() error {
 	if l.Tls != nil && l.Tls.Valid() {
+		if l.Tls.Generate != nil {
+		}
 		defer l.Listener.Close()
 		return l.Server.ServeTLS(l, l.Tls.CertFile, l.Tls.KeyFile)
 	}

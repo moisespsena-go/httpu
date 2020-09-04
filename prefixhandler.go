@@ -43,16 +43,8 @@ func (this *PrefixHandlers) With(prefix string, handler http.Handler) {
 	this.Set(prefix, PrefixHandler(prefix, handler))
 }
 
-func (this PrefixHandlers) ServeHttpHandler(w http.ResponseWriter, r *http.Request, defaul http.Handler) {
+func (this PrefixHandlers) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if handler := this.Get(r.URL.Path); handler != nil {
 		handler.ServeHTTP(w, r)
-	} else {
-		defaul.ServeHTTP(w, r)
 	}
-}
-
-func (this PrefixHandlers) ServeHTTP() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		this.ServeHttpHandler(w, r, http.NotFoundHandler())
-	})
 }
