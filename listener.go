@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"oliva.pw/tlsgen"
+	"github.com/unapu-go/tlsgen"
 
 	"github.com/moisespsena-go/task"
 

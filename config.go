@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"oliva.pw/tlsgen"
+	"github.com/unapu-go/tlsgen"
 
 	"golang.org/x/net/http2"
 )
