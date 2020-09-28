@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/moisespsena-go/middleware"
@@ -45,21 +46,27 @@ func (l Listeners) Tasks() task.Slice {
 }
 
 type Server struct {
-	Config              *Config
-	Handler             http.Handler
-	handler             http.Handler
-	listeners           Listeners
-	log                 logging.Logger
-	listenerCallbacks   []func(lis *Listener)
-	preSetup, postSetup []func(s *Server) error
-
-	tasks task.Slice
+	Config                     *Config
+	Handler                    http.Handler
+	handler                    http.Handler
+	listeners                  Listeners
+	log                        logging.Logger
+	listenerCallbacks          []func(lis *Listener)
+	preSetup, postSetup        []func(s *Server) error
+	postShutdown               []func()
+	postShutdownMu, shutdownMu sync.Mutex
+	tasks                      task.Slice
+	stoper                     task.Stoper
 }
 
 func NewServer(cfg *Config, handler http.Handler) *Server {
 	s := &Server{Config: cfg, Handler: handler}
 	s.SetLog(log)
 	return s
+}
+
+func (s *Server) AddTask(t ...task.Task) {
+	s.tasks = append(s.tasks, t...)
 }
 
 func (s *Server) PreSetup(f ...func(s *Server) error) {
@@ -76,6 +83,22 @@ func (s *Server) PostSetup(f ...func(s *Server) error) {
 
 func (s *Server) GetPostSetup() []func(s *Server) error {
 	return s.postSetup
+}
+
+func (s *Server) PostShutdown(f ...func()) {
+	s.postShutdown = append(s.postShutdown, f...)
+}
+
+func (s *Server) PostShutdownE(f ...func() error) {
+	for _, f := range f {
+		s.postShutdown = append(s.postShutdown, func() {
+			f()
+		})
+	}
+}
+
+func (s *Server) GetPostShutdown() []func() {
+	return s.postShutdown
 }
 
 func (s *Server) OnListener(f ...func(lis *Listener)) {
@@ -157,9 +180,16 @@ func (s *Server) Run() (err error) {
 }
 
 func (s *Server) Start(done func()) (stop task.Stoper, err error) {
-	return task.Start(func(state *task.State) {
-		done()
-	}, s.tasks...)
+	s.PostShutdown(done)
+	if s.stoper, err = task.Start(func(state *task.State) {
+		s.callPostShutdown()
+	}, s.tasks...); err != nil || s.stoper == nil {
+		s.callPostShutdown()
+		return
+	}
+	return task.NewStoper(func() {
+		s.Close()
+	}, s.stoper.IsRunning), nil
 }
 
 func (s *Server) InitListeners() (err error) {
@@ -258,14 +288,42 @@ func (s *Server) InitListeners() (err error) {
 		}
 	}
 	s.listeners = listeners
-	s.tasks = tasks
+	s.tasks = append(s.tasks, tasks...)
 	return
 }
 
 func (s *Server) Shutdown(ctx context.Context) (err error) {
-	for _, l := range s.listeners[1:] {
-		go l.ShutdownLog(ctx)
+	s.shutdownMu.Lock()
+	defer s.shutdownMu.Unlock()
+	if s.stoper != nil {
+		s.stoper.Stop()
+		return
 	}
 
-	return s.listeners[0].ShutdownLog(ctx)
+	for _, l := range s.listeners[1:] {
+		if l.running {
+			go l.ShutdownLog(ctx)
+		}
+	}
+
+	if s.listeners[0].running {
+		err = s.listeners[0].ShutdownLog(ctx)
+	}
+	s.callPostShutdown()
+	return
+}
+
+func (s *Server) callPostShutdown() {
+	s.postShutdownMu.Lock()
+	defer s.postShutdownMu.Unlock()
+	for _, f := range s.postShutdown {
+		f()
+	}
+	s.postShutdown = nil
+	s.tasks = nil
+	s.stoper = nil
+}
+
+func (s *Server) Close() error {
+	return s.Shutdown(context.Background())
 }
