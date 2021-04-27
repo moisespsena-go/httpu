@@ -10,8 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/moisespsena-go/middleware"
-
+	post_limit "github.com/moisespsena-go/http-post-limit"
 	"github.com/moisespsena-go/task"
 
 	"github.com/go-errors/errors"
@@ -138,7 +137,9 @@ func (s *Server) Prepare() (err error) {
 		})
 	}
 	if !s.Config.UnlimitedPostSize {
-		s.handler = middleware.PostLimit(s.Config.MaxPostSize)(s.handler)
+		s.handler = post_limit.New(s.Handler, &post_limit.Opts{
+			MaxPostSize: s.Config.MaxPostSize,
+		})
 	}
 	if !s.Config.NotFoundDisabled {
 		s.Handler = FallbackHandlers{s.Handler, http.NotFoundHandler()}

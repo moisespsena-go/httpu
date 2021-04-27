@@ -8,6 +8,13 @@ import (
 	"strings"
 )
 
+const (
+	HeaderXRequestedWith  = "X-Requested-With"
+	HeaderXRequestedFrame = "X-Requested-Frame"
+
+	RequestedByActionFormFrame = "Action"
+)
+
 func StripPrefix(w http.ResponseWriter, r *http.Request, handler http.Handler, prefix string, slashPermanentRedirect bool) {
 	if prefix == "" {
 		handler.ServeHTTP(w, r)
@@ -49,26 +56,42 @@ func RemoteIP(r *http.Request) (ip net.IP) {
 	return net.ParseIP(r.RemoteAddr)
 }
 
-func Redirect(w http.ResponseWriter, r *http.Request, url string, status int) {
-	if r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
-		if r.Header.Get("X-Redirection-Disabled") == "true" {
-			if status < 400 {
-				w.WriteHeader(201)
-			} else {
-				w.WriteHeader(status)
-			}
-			return
+func IsActionFormRequest(r *http.Request) bool {
+	return r.Header.Get(HeaderXRequestedFrame) == RequestedByActionFormFrame
+}
+
+func IsXhrRequest(r *http.Request) bool {
+	return r.Header.Get(HeaderXRequestedWith) == "XMLHttpRequest"
+}
+
+func Redirect(w http.ResponseWriter, r *http.Request, url string, status int, force ...bool) {
+	RedirectHeader("X-Location", w, r, url, status, force...)
+}
+
+func RedirectHeader(headerName string, w http.ResponseWriter, r *http.Request, url string, status int, force ...bool) {
+	var force_ bool
+	for _, force_ = range force{}
+
+	if IsActionFormRequest(r) {
+		if status < 400 {
+			status = 201
 		}
 
-		w.Header().Set("X-Location", url)
-		if status < 400 {
-			w.WriteHeader(201)
-		} else {
-			w.WriteHeader(status)
+		w.Header().Set(headerName, url)
+		w.WriteHeader(status)
+	} else if IsXhrRequest(r) {
+		if r.Header.Get("X-Redirection-Disabled") != "true" {
+			w.Header().Set(headerName, url)
+		} else if force_ {
+			w.Header().Set(headerName+"-Window", url)
 		}
-		return
+		if status < 400 {
+			status = 201
+		}
+		w.WriteHeader(status)
+	} else {
+		http.Redirect(w, r, url, status)
 	}
-	http.Redirect(w, r, url, status)
 }
 
 // StripStaticPrefix returns a handler that serves HTTP requests
