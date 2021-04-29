@@ -16,3 +16,5 @@ require (
 	github.com/xi2/httpgzip v0.0.0-20190509075255-932ab5e254ae
 	golang.org/x/net v0.0.0-20210423184538-5f58ad60dda6
 )
+
+replace github.com/xi2/httpgzip v0.0.0-20190509075255-932ab5e254ae => github.com/unapu-go/httpgzip v0.0.0-20210429175629-47c0df266ac9

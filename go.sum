@@ -21,14 +21,14 @@ github.com/phayes/permbits v0.0.0-20190612203442-39d7c581d2ee h1:P6U24L02WMfj9ym
 github.com/phayes/permbits v0.0.0-20190612203442-39d7c581d2ee/go.mod h1:3uODdxMgOaPYeWU7RzZLxVtJHZ/x1f/iHkBZuKJDzuY=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
+github.com/unapu-go/httpgzip v0.0.0-20210429175629-47c0df266ac9 h1:uytpn9snLNu7fGXPEwopaLfQ8coK9GORkhqAvZnz0jw=
+github.com/unapu-go/httpgzip v0.0.0-20210429175629-47c0df266ac9/go.mod h1:yyzQ1jSBlAEH/UTSwrp/LGgxoatcEf0Z31YJSISId04=
 github.com/unapu-go/safewriter v0.0.1 h1:AoJFpf8i4V4H6qrSr1ghwS51NSbCkXVGWxXcCzmqmjM=
 github.com/unapu-go/safewriter v0.0.1/go.mod h1:UKKjY9emIsKUkqemq7JzJ4prYS0wwzwl15VcGQ96nYo=
 github.com/unapu-go/tlsgen v0.0.1 h1:WvK1RcaG5B1lKJTQch7wIQRLesKh6EJcsr/z+jzFimA=
 github.com/unapu-go/tlsgen v0.0.1/go.mod h1:1imQ3kPLcpnos5g4CA4ErOqxJtb0nbec2J4NwwWO5pE=
 github.com/unapu-go/tlsloader v0.0.1 h1:maYdxh5LBZ0VI7Lwl6bk8bDYHb8gV+ZmenCrrgMz3TM=
 github.com/unapu-go/tlsloader v0.0.1/go.mod h1:UomUmkpqHKbm8ofuZNUH+ZXpsujlbiT2r4B16HVxfk4=
-github.com/xi2/httpgzip v0.0.0-20190509075255-932ab5e254ae h1:8qQDqpy4i5eqSsgPu0F4sK+XUA4rLg87lISt9QsgJ+A=
-github.com/xi2/httpgzip v0.0.0-20190509075255-932ab5e254ae/go.mod h1:79MWNkfNT6haX1tL/I2CxfAR76mUWukU+Anzr2S7B2E=
 golang.org/x/net v0.0.0-20210423184538-5f58ad60dda6 h1:0PC75Fz/kyMGhL0e1QnypqK2kQMqKt9csD1GnMJR+Zk=
 golang.org/x/net v0.0.0-20210423184538-5f58ad60dda6/go.mod h1:OJAsFXCWl8Ukc7SiCT/9KSuxbyM7479/AVlXFRxuMCk=
 golang.org/x/sys v0.0.0-20201119102817-f84b799fce68/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
