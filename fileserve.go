@@ -1,7 +1,6 @@
 package httpu
 
 import (
-	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
@@ -85,49 +84,31 @@ func ServeContent(w http.ResponseWriter, r *http.Request, name string, modtime t
 	}
 
 	var noRangeSent = func() {
-		/*if r.Method != "HEAD" {
-			if size != 0 {
-				if gzipped, ok := content.(interface{ Compressed() bool }); ok && gzipped.Compressed() {
-					var err error
-					content, err = gzip.NewReader(content)
-					if err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-						return
-					}
-					size = 0
-				}
+		if gzipped, ok := content.(httpgzip.GzipedReader); ok {
+			if ok, err := gzipped.Gziped(); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			} else if ok {
+				w.Header().Set("Content-Encoding", "gzip")
+			}
+			if r.Method == http.MethodGet {
 				if size > 0 {
 					io.CopyN(w, content, size)
 				} else {
 					io.Copy(w, content)
 				}
 			}
-		}
-
-		return
-		*/
-		httpgzip.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != "HEAD" {
-				if gzipped, ok := content.(interface{ Compressed() bool }); ok && gzipped.Compressed() {
-					if httpgzip.Accepts(r) {
-						httpgzip.Gzipped(r)
+		} else {
+			httpgzip.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != "HEAD" {
+					if size > 0 {
+						io.CopyN(w, content, size)
 					} else {
-						var err error
-						content, err = gzip.NewReader(content)
-						if err != nil {
-							http.Error(w, err.Error(), http.StatusInternalServerError)
-							return
-						}
-						size = 0
+						io.Copy(w, content)
 					}
 				}
-				if size > 0 {
-					io.CopyN(w, content, size)
-				} else {
-					io.Copy(w, content)
-				}
-			}
-		}), nil).ServeHTTP(w, r)
+			}), nil).ServeHTTP(w, r)
+		}
 	}
 
 	// handle Content-Range header.
