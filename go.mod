@@ -14,7 +14,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/unapu-go/tlsgen v0.0.1
 	github.com/xi2/httpgzip v0.0.0-20190509075255-932ab5e254ae
-	golang.org/x/net v0.0.0-20210423184538-5f58ad60dda6
+	golang.org/x/net v0.7.0
 )
 
 replace github.com/xi2/httpgzip v0.0.0-20190509075255-932ab5e254ae => github.com/unapu-go/httpgzip v0.0.0-20210429175629-47c0df266ac9
